@@ -179,3 +179,550 @@
   </div>
 </body>
 </html>
+<!-- Robotics paper menu: paste inside .wrap, after Research -->
+<style>
+  #robot-papers {
+    margin-top: 12px;
+  }
+
+  #robot-papers button,
+  #robot-papers select {
+    font: inherit;
+  }
+
+  .rp-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .rp-heading h2 {
+    margin-bottom: 0;
+  }
+
+  .rp-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rp-controls button {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 9px 13px;
+    cursor: pointer;
+  }
+
+  .rp-controls button:hover {
+    border-color: var(--gold);
+  }
+
+  .rp-controls button:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  #robot-papers button:focus-visible,
+  #robot-papers a:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 4px;
+  }
+
+  .rp-intro,
+  .rp-status,
+  .rp-footnote {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .rp-intro {
+    margin: 0 0 20px;
+  }
+
+  .rp-layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+
+  .rp-layout[hidden] {
+    display: none;
+  }
+
+  .rp-menu {
+    max-height: 450px;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+  }
+
+  .rp-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 16px 18px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-left: 3px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .rp-menu button:last-child {
+    border-bottom: 0;
+  }
+
+  .rp-menu button[aria-current="true"] {
+    color: var(--ink);
+    background: var(--paper);
+    border-left-color: var(--gold);
+  }
+
+  .rp-detail {
+    min-width: 0;
+    padding: 28px;
+  }
+
+  .rp-meta {
+    color: var(--gold);
+    font-size: 12px;
+    line-height: 1.8;
+    letter-spacing: 0.04em;
+  }
+
+  .rp-title {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 29px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 14px 0;
+    overflow-wrap: anywhere;
+  }
+
+  .rp-authors {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .rp-summary {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.85;
+    max-height: 240px;
+    overflow-y: auto;
+    white-space: pre-line;
+  }
+
+  .rp-links {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
+
+  #robot-papers a {
+    color: var(--gold);
+    text-underline-offset: 4px;
+  }
+
+  .rp-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .rp-status {
+    margin: 0;
+  }
+
+  .rp-counter {
+    color: var(--gold);
+    font-size: 12px;
+  }
+
+  @media (max-width: 720px) {
+    .rp-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .rp-menu {
+      display: flex;
+      max-height: none;
+      overflow-x: auto;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .rp-menu button {
+      flex: 0 0 210px;
+      border-bottom: 0;
+      border-left: 0;
+      border-top: 3px solid transparent;
+    }
+
+    .rp-menu button[aria-current="true"] {
+      border-top-color: var(--gold);
+    }
+
+    .rp-detail {
+      padding: 22px;
+    }
+  }
+</style>
+
+<section id="robot-papers" aria-labelledby="rp-heading">
+  <div class="kicker">04 · Reading Radar</div>
+
+  <div class="rp-heading">
+    <h2 id="rp-heading">Robotics Papers</h2>
+
+    <div class="rp-controls">
+      <button type="button" id="rp-prev" aria-label="Previous paper">
+        ←
+      </button>
+      <button type="button" id="rp-pause" aria-pressed="false">
+        Pause
+      </button>
+      <button type="button" id="rp-next" aria-label="Next paper">
+        →
+      </button>
+      <button type="button" id="rp-refresh">
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <p class="rp-intro">
+    Recent robotics and embodied AI papers, ranked by Hugging Face
+    community upvotes within the retrieved results.
+    Automatically rotates every 8 seconds.
+  </p>
+
+  <div class="rp-layout" id="rp-layout" hidden>
+    <div class="rp-menu" id="rp-menu"
+         role="group" aria-label="Select a paper"></div>
+
+    <div class="rp-detail">
+      <div class="rp-meta" id="rp-meta"></div>
+      <h3 class="rp-title" id="rp-title"></h3>
+      <p class="rp-authors" id="rp-authors"></p>
+      <p class="rp-summary" id="rp-summary"></p>
+
+      <div class="rp-links">
+        <a id="rp-arxiv" target="_blank" rel="noopener noreferrer">
+          Read on arXiv ↗
+        </a>
+        <a id="rp-huggingface" target="_blank" rel="noopener noreferrer">
+          Community discussion ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-bottom">
+    <p class="rp-status" id="rp-status" role="status">
+      Searching for papers…
+    </p>
+    <span class="rp-counter" id="rp-counter"></span>
+  </div>
+
+  <p class="rp-footnote">
+    Source:
+    <a href="https://huggingface.co/papers"
+       target="_blank" rel="noopener noreferrer">Hugging Face Papers</a>.
+    Search-based selection; coverage is not exhaustive.
+  </p>
+
+  <noscript>Please enable JavaScript to load the paper feed.</noscript>
+</section>
+
+<script>
+(() => {
+  "use strict";
+
+  const CONFIG = {
+    queries: ["robotics", "embodied intelligence", "robot manipulation"],
+    recentDays: 180,
+    maxPapers: 10,
+    rotationMs: 8000,
+    cacheMs: 6 * 60 * 60 * 1000,
+    requestTimeoutMs: 15000
+  };
+
+  const CACHE_KEY = "robotics-paper-radar-v1";
+  const $ = id => document.getElementById(id);
+
+  const root = $("robot-papers");
+  const menu = $("rp-menu");
+  const status = $("rp-status");
+
+  let papers = [];
+  let selected = 0;
+  let loading = false;
+  let hovering = false;
+  let paused = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  function updatePauseButton() {
+    $("rp-pause").textContent = paused ? "Play" : "Pause";
+    $("rp-pause").setAttribute("aria-pressed", String(paused));
+  }
+
+  // Only accept expected identifiers; external text is rendered with textContent.
+  function normalize(entry) {
+    const p = entry.paper || entry;
+    const id = String(p.id || "");
+
+    if (!/^\d{4}\.\d{4,5}(v\d+)?$/.test(id)) return null;
+    if (typeof p.title !== "string" || !p.title.trim()) return null;
+
+    const publishedAt = p.publishedAt || entry.publishedAt;
+    const time = Date.parse(publishedAt);
+    const age = Date.now() - time;
+
+    if (!Number.isFinite(time) ||
+        age < 0 ||
+        age > CONFIG.recentDays * 86400000) {
+      return null;
+    }
+
+    const summary = String(p.summary || entry.summary || "");
+    const searchable = p.title + " " + summary;
+
+    // Reduce unrelated results from broad semantic search.
+    if (!/\brobot\w*|\bembodied\b|\bhumanoid\w*|\bmanipulat\w*|\blegged\b/i
+        .test(searchable)) {
+      return null;
+    }
+
+    const rawVotes = Number(p.upvotes ?? entry.upvotes ?? 0);
+
+    return {
+      id,
+      title: p.title.trim(),
+      summary,
+      publishedAt: new Date(time).toISOString(),
+      votes: Number.isFinite(rawVotes) ? Math.max(0, rawVotes) : 0,
+      authors: Array.isArray(p.authors)
+        ? p.authors.map(a => a.name).filter(Boolean).slice(0, 5).join(", ")
+        : ""
+    };
+  }
+
+  function show(index) {
+    if (!papers.length) return;
+
+    selected = (index + papers.length) % papers.length;
+    const p = papers[selected];
+
+    Array.from(menu.children).forEach((button, i) => {
+      button.setAttribute("aria-current", String(i === selected));
+    });
+
+    $("rp-meta").textContent =
+      new Date(p.publishedAt).toLocaleDateString("en-GB", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      }) + " · " + p.votes + " community upvotes";
+
+    $("rp-title").textContent = p.title;
+    $("rp-authors").textContent = p.authors;
+    $("rp-summary").textContent = p.summary || "Abstract unavailable.";
+    $("rp-summary").scrollTop = 0;
+
+    $("rp-arxiv").href = "https://arxiv.org/abs/" + p.id;
+    $("rp-huggingface").href = "https://huggingface.co/papers/" + p.id;
+    $("rp-counter").textContent = (selected + 1) + " / " + papers.length;
+  }
+
+  function render(items) {
+    papers = items;
+    menu.replaceChildren();
+
+    papers.forEach((p, i) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = String(i + 1).padStart(2, "0") + "  " + p.title;
+      button.addEventListener("click", () => show(i));
+      menu.appendChild(button);
+    });
+
+    $("rp-layout").hidden = papers.length === 0;
+    $("rp-prev").disabled = papers.length < 2;
+    $("rp-next").disabled = papers.length < 2;
+    show(0);
+  }
+
+  async function search(query) {
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      CONFIG.requestTimeoutMs
+    );
+
+    try {
+      const url = "https://huggingface.co/api/papers/search?q=" +
+                  encodeURIComponent(query);
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+        credentials: "omit"
+      });
+
+      if (!response.ok) throw new Error("HTTP " + response.status);
+
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error("Unexpected response");
+      return data;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function load(force = false) {
+    if (loading) return;
+    loading = true;
+    $("rp-refresh").disabled = true;
+
+    try {
+      // Cache access can fail in privacy modes; loading still works.
+      if (!force) {
+        try {
+          const cache = JSON.parse(localStorage.getItem(CACHE_KEY));
+          if (cache &&
+              Number.isFinite(cache.savedAt) &&
+              Date.now() >= cache.savedAt &&
+              Date.now() - cache.savedAt < CONFIG.cacheMs &&
+              Array.isArray(cache.entries)) {
+            const cached = cache.entries.map(normalize).filter(Boolean);
+            if (cached.length) {
+              render(cached.slice(0, CONFIG.maxPapers));
+              status.textContent = "Cached feed · updated " +
+                new Date(cache.savedAt).toLocaleString();
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      status.textContent = "Searching recent robotics papers…";
+
+      const results = await Promise.allSettled(
+        CONFIG.queries.map(search)
+      );
+      const successful = results.filter(r => r.status === "fulfilled");
+
+      if (!successful.length) throw new Error("All searches failed");
+
+      const unique = new Map();
+
+      successful.forEach(result => {
+        result.value.forEach(entry => {
+          const p = normalize(entry);
+          if (p) unique.set(p.id, p);
+        });
+      });
+
+      const items = Array.from(unique.values())
+        .sort((a, b) =>
+          b.votes - a.votes ||
+          Date.parse(b.publishedAt) - Date.parse(a.publishedAt)
+        )
+        .slice(0, CONFIG.maxPapers);
+
+      if (!items.length) {
+        status.textContent = papers.length
+          ? "No recent matches returned. Keeping the previous feed."
+          : "No matching papers found in the last " +
+            CONFIG.recentDays + " days. Try Refresh later.";
+        return;
+      }
+
+      render(items);
+
+      const savedAt = Date.now();
+      // Cache only complete searches so a partial failure can be retried.
+      if (successful.length === CONFIG.queries.length) {
+        try {
+          const entries = items.map(p => ({
+            id: p.id,
+            title: p.title,
+            summary: p.summary,
+            publishedAt: p.publishedAt,
+            upvotes: p.votes,
+            authors: p.authors
+              ? [{ name: p.authors }]
+              : []
+          }));
+          localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify({ savedAt, entries })
+          );
+        } catch (_) {}
+      }
+
+      status.textContent =
+        (successful.length < results.length ? "Partial feed · " : "") +
+        "Updated " + new Date(savedAt).toLocaleString() +
+        " · last " + CONFIG.recentDays + " days";
+    } catch (error) {
+      status.textContent = papers.length
+        ? "Refresh failed. Keeping the previous feed; try again later."
+        : "Unable to load papers. Check your connection and press Refresh.";
+      console.warn("Paper feed:", error);
+    } finally {
+      loading = false;
+      $("rp-refresh").disabled = false;
+    }
+  }
+
+  $("rp-prev").addEventListener("click", () => show(selected - 1));
+  $("rp-next").addEventListener("click", () => show(selected + 1));
+  $("rp-refresh").addEventListener("click", () => load(true));
+
+  $("rp-pause").addEventListener("click", () => {
+    paused = !paused;
+    updatePauseButton();
+  });
+
+  root.addEventListener("mouseenter", () => { hovering = true; });
+  root.addEventListener("mouseleave", () => { hovering = false; });
+
+  setInterval(() => {
+    if (!paused &&
+        !hovering &&
+        !document.hidden &&
+        !root.contains(document.activeElement) &&
+        papers.length > 1) {
+      show(selected + 1);
+    }
+  }, CONFIG.rotationMs);
+
+  // Check cache freshness hourly while the page is open.
+  setInterval(() => {
+    if (!document.hidden) load();
+  }, 60 * 60 * 1000);
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) load();
+  });
+
+  updatePauseButton();
+  render([]);
+  load();
+})();
+</script>
