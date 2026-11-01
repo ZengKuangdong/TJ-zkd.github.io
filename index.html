@@ -320,10 +320,31 @@
       height: 8px;
       border-radius: 50%;
       border: 1px solid var(--gold);
+      transition: background-color 180ms, transform 180ms;
     }
 
     .paper-pagination button[aria-current="true"]::before {
       background: var(--gold);
+      transform: scale(1.25);
+    }
+
+    .paper-stage {
+      position: relative;
+      overflow: hidden;
+      min-width: 0;
+      transition: height 360ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .paper-ghost {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    .paper-stage.is-switching .paper-detail {
+      will-change: transform, opacity;
     }
 
     .paper-detail {
@@ -477,11 +498,12 @@
         gap: 12px;
       }
 
-      .paper-detail {
+      .paper-stage {
         grid-column: 1 / -1;
         grid-row: 1;
-        padding: 22px;
       }
+
+      .paper-detail { padding: 22px; }
 
       .paper-arrow { grid-row: 2; }
       #paper-next { justify-self: end; }
@@ -489,7 +511,8 @@
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      body, article, .paper-detail, .paper-arrow, .paper-empty {
+      body, article, .paper-detail, .paper-arrow, .paper-empty,
+      .paper-stage, .paper-pagination button::before {
         transition: none;
       }
     }
@@ -606,24 +629,26 @@
         <button class="paper-arrow" type="button" id="paper-prev"
                 aria-label="Previous paper" aria-controls="paper-slide" disabled>←</button>
 
-        <div class="paper-detail" id="paper-slide" role="group"
-             aria-roledescription="slide">
-          <div class="paper-meta" id="paper-meta"></div>
-          <div class="paper-content" id="paper-content">
-            <div class="paper-copy">
-              <h3 class="paper-title" id="paper-title"></h3>
-              <p class="paper-authors" id="paper-authors"></p>
-              <p class="paper-summary" id="paper-summary"
-                 tabindex="0" aria-label="Paper abstract"></p>
+        <div class="paper-stage" id="paper-stage">
+          <div class="paper-detail" id="paper-slide" role="group"
+               aria-roledescription="slide">
+            <div class="paper-meta" id="paper-meta"></div>
+            <div class="paper-content" id="paper-content">
+              <div class="paper-copy">
+                <h3 class="paper-title" id="paper-title"></h3>
+                <p class="paper-authors" id="paper-authors"></p>
+                <p class="paper-summary" id="paper-summary"
+                   tabindex="0" aria-label="Paper abstract"></p>
 
-              <div class="paper-links">
-                <a id="paper-arxiv" target="_blank"
-                   rel="noopener noreferrer">Read on arXiv ↗</a>
-                <a id="paper-community" target="_blank"
-                   rel="noopener noreferrer">Community discussion ↗</a>
+                <div class="paper-links">
+                  <a id="paper-arxiv" target="_blank"
+                     rel="noopener noreferrer">Read on arXiv ↗</a>
+                  <a id="paper-community" target="_blank"
+                     rel="noopener noreferrer">Community discussion ↗</a>
+                </div>
               </div>
+              <figure class="paper-figure" id="paper-figure" hidden></figure>
             </div>
-            <figure class="paper-figure" id="paper-figure" hidden></figure>
           </div>
         </div>
         <button class="paper-arrow" type="button" id="paper-next"
@@ -684,6 +709,10 @@
       const pagination = $("paper-pagination");
       const status = $("paper-status");
       const empty = $("paper-empty");
+      const stage = $("paper-stage");
+      const slide = $("paper-slide");
+      const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const previewCache = new Map();
 
       let papers = [];
       let selected = 0;
@@ -691,10 +720,31 @@
       let hovering = false;
       let timer = null;
       let swipeStart = null;
+      let transition = null;
+      let pendingSlide = null;
+      let displayed = -1;
 
-      let paused = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
+      let paused = motionPreference.matches;
+
+      function syncStageHeight() {
+        const height = slide.getBoundingClientRect().height;
+        if (height > 0) stage.style.height = height + "px";
+      }
+
+      // Smoothly resize when titles, images, fonts, or the viewport change.
+      new ResizeObserver(syncStageHeight).observe(slide);
+
+      function preloadNeighbors(index) {
+        [-1, 1].forEach(offset => {
+          const paper = papers[(index + offset + papers.length) % papers.length];
+          if (!paper?.thumbnail || previewCache.has(paper.thumbnail)) return;
+          const image = new Image();
+          image.decoding = "async";
+          image.referrerPolicy = "no-referrer";
+          previewCache.set(paper.thumbnail, image);
+          image.src = paper.thumbnail;
+        });
+      }
 
       function normalizeImageUrl(value) {
         if (typeof value !== "string" || !value.trim()) return "";
@@ -796,19 +846,23 @@
 
         figure.append(link, caption);
         image.src = paper.thumbnail;
+        const preloaded = previewCache.get(paper.thumbnail);
+        if ((image.complete && image.naturalWidth > 0) ||
+            (preloaded?.complete && preloaded.naturalWidth > 0)) {
+          figure.hidden = false;
+          content.classList.add("has-image");
+        }
       }
 
-      function show(index) {
-        if (!papers.length) return;
-
-        selected = (index + papers.length) % papers.length;
-        const p = papers[selected];
+      function paintPaper(index) {
+        const p = papers[index];
+        displayed = index;
 
         Array.from(pagination.children).forEach((button, i) => {
-          button.setAttribute("aria-current", String(i === selected));
+          button.setAttribute("aria-current", String(i === index));
         });
         $("paper-slide").setAttribute("aria-label",
-          (selected + 1) + " of " + papers.length + ": " + p.title);
+          (index + 1) + " of " + papers.length + ": " + p.title);
 
         $("paper-meta").textContent =
           new Date(p.publishedAt).toLocaleDateString("en-GB", {
@@ -831,7 +885,70 @@
         $("paper-arxiv").href = "https://arxiv.org/abs/" + p.id;
         $("paper-community").href = "https://huggingface.co/papers/" + p.id;
         $("paper-counter").textContent =
-          (selected + 1) + " / " + papers.length;
+          (index + 1) + " / " + papers.length;
+        syncStageHeight();
+        preloadNeighbors(index);
+      }
+
+      function cancelTransition() {
+        const previous = transition;
+        transition = null;
+        pendingSlide = null;
+        previous?.animations.forEach(animation => animation.cancel());
+        previous?.ghost.remove();
+        stage.classList.remove("is-switching");
+      }
+
+      function show(index, animate = true) {
+        if (!papers.length) return;
+        const direction = index < selected ? -1 : 1;
+        selected = (index + papers.length) % papers.length;
+
+        if (!animate || motionPreference.matches) {
+          cancelTransition();
+          paintPaper(selected);
+          return;
+        }
+        if (transition) {
+          // Keep the final requested destination rather than restarting mid-slide.
+          pendingSlide = { index: selected, direction };
+          return;
+        }
+        if (displayed === selected) return;
+        moveTo(selected, direction);
+      }
+
+      function moveTo(index, direction) {
+        const ghost = slide.cloneNode(true);
+        [ghost, ...ghost.querySelectorAll("[id]")].forEach(node => node.removeAttribute("id"));
+        ghost.classList.add("paper-ghost");
+        ghost.setAttribute("aria-hidden", "true");
+        ghost.inert = true;
+        stage.appendChild(ghost);
+        stage.classList.add("is-switching");
+        paintPaper(index);
+
+        const options = { duration: 360, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+        const incoming = slide.animate([
+          { transform: "translate3d(" + (direction * 48) + "px, 0, 0)", opacity: 0 },
+          { transform: "translate3d(0, 0, 0)", opacity: 1 }
+        ], options);
+        const outgoing = ghost.animate([
+          { transform: "translate3d(0, 0, 0)", opacity: 1 },
+          { transform: "translate3d(" + (-direction * 48) + "px, 0, 0)", opacity: 0 }
+        ], options);
+        const current = { ghost, animations: [incoming, outgoing] };
+        transition = current;
+
+        Promise.allSettled(current.animations.map(animation => animation.finished)).then(() => {
+          if (transition !== current) return;
+          ghost.remove();
+          transition = null;
+          stage.classList.remove("is-switching");
+          const next = pendingSlide;
+          pendingSlide = null;
+          if (next && next.index !== displayed) moveTo(next.index, next.direction);
+        });
       }
 
       function resetTimer() {
@@ -849,6 +966,7 @@
       }
 
       function render(items) {
+        cancelTransition();
         papers = items;
         pagination.replaceChildren();
 
@@ -871,7 +989,7 @@
         $("paper-prev").disabled = papers.length < 2;
         $("paper-next").disabled = papers.length < 2;
 
-        show(0);
+        show(0, false);
         resetTimer();
       }
 
