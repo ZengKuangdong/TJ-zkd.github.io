@@ -5,6 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kuangdong Zeng</title>
 
+  <script>
+    (() => {
+      function updateTimeTheme() {
+        const hour = new Date().getHours();
+        document.documentElement.dataset.theme =
+          hour >= 7 && hour < 19 ? "day" : "night";
+      }
+
+      updateTimeTheme();
+      setInterval(updateTimeTheme, 60 * 1000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) updateTimeTheme();
+      });
+      window.addEventListener("pageshow", updateTimeTheme);
+    })();
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
@@ -16,6 +33,24 @@
       --paper: #fffcf8;
       --line: #ece4d6;
       --muted: #5c4e63;
+      --surface: #fff;
+      --glow: rgba(166, 132, 69, 0.16);
+      --portrait-halo: #fff;
+      --portrait-ring: #e7d7b4;
+      color-scheme: light;
+    }
+
+    :root[data-theme="night"] {
+      --ink: #f4ecf8;
+      --gold: #d6b575;
+      --paper: #15111b;
+      --line: #3b3044;
+      --muted: #c2b5cb;
+      --surface: #201a28;
+      --glow: rgba(214, 181, 117, 0.10);
+      --portrait-halo: #201a28;
+      --portrait-ring: #5e4d38;
+      color-scheme: dark;
     }
 
     * { box-sizing: border-box; }
@@ -26,7 +61,7 @@
       background:
         radial-gradient(
           900px 420px at 100% -10%,
-          rgba(166, 132, 69, 0.16),
+          var(--glow),
           transparent 60%
         ),
         var(--paper);
@@ -88,7 +123,8 @@
       object-fit: cover;
       display: block;
       border: 1px solid var(--gold);
-      box-shadow: 0 0 0 7px #fff, 0 0 0 8px #e7d7b4;
+      box-shadow: 0 0 0 7px var(--portrait-halo),
+                  0 0 0 8px var(--portrait-ring);
     }
 
     h1 {
@@ -156,7 +192,7 @@
     .grid { display: grid; gap: 16px; }
 
     article {
-      background: #fff;
+      background: var(--surface);
       border: 1px solid var(--line);
       border-left: 2px solid var(--gold);
       padding: 22px 24px;
@@ -239,44 +275,62 @@
 
     .paper-layout {
       display: grid;
-      grid-template-columns: 280px minmax(0, 1fr);
-      border: 1px solid var(--line);
-      background: #fff;
+      grid-template-columns: 44px minmax(0, 1fr) 44px;
+      gap: 14px;
+      align-items: center;
+      touch-action: pan-y pinch-zoom;
     }
 
     [hidden] { display: none !important; }
 
-    .paper-menu {
-      max-height: 480px;
-      overflow-y: auto;
-      border-right: 1px solid var(--line);
-    }
-
-    .paper-menu button {
-      display: block;
-      width: 100%;
-      padding: 17px 18px;
-      text-align: left;
-      color: var(--muted);
-      background: transparent;
-      border: 0;
-      border-bottom: 1px solid var(--line);
-      border-left: 3px solid transparent;
-      font-size: 13px !important;
-      line-height: 1.65;
-    }
-
-    .paper-menu button:last-child { border-bottom: 0; }
-
-    .paper-menu button[aria-current="true"] {
+    .paper-arrow {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 50%;
       color: var(--ink);
-      background: var(--paper);
-      border-left-color: var(--gold);
+      background: var(--surface);
+      font-size: 22px !important;
+    }
+
+    .paper-arrow:hover { border-color: var(--gold); }
+
+    .paper-pagination {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 2px;
+      margin-top: 14px;
+    }
+
+    .paper-pagination button {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .paper-pagination button::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid var(--gold);
+    }
+
+    .paper-pagination button[aria-current="true"]::before {
+      background: var(--gold);
     }
 
     .paper-detail {
       padding: 28px;
       min-width: 0;
+      border: 1px solid var(--line);
+      background: var(--surface);
     }
 
     .paper-content {
@@ -377,7 +431,7 @@
     .paper-empty {
       padding: 26px;
       border: 1px solid var(--line);
-      background: #fff;
+      background: var(--surface);
       color: var(--muted);
       font-size: 14px;
       line-height: 1.8;
@@ -389,6 +443,10 @@
       border-top: 1px solid var(--line);
       color: var(--muted);
       font-size: 12px;
+    }
+
+    body, article, .paper-detail, .paper-arrow, .paper-empty {
+      transition: background-color 250ms, color 250ms, border-color 250ms;
     }
 
     @media (max-width: 900px) {
@@ -414,32 +472,26 @@
       }
 
       .portrait { max-width: 280px; }
-      .paper-layout { grid-template-columns: 1fr; }
-
-      .paper-menu {
-        display: flex;
-        overflow-x: auto;
-        max-height: none;
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
+      .paper-layout {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
       }
 
-      .paper-menu button {
-        flex: 0 0 210px;
-        border-bottom: 0;
-        border-left: 0;
-        border-top: 3px solid transparent;
+      .paper-detail {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        padding: 22px;
       }
 
-      .paper-menu button[aria-current="true"] {
-        border-top-color: var(--gold);
-      }
-
-      .paper-detail { padding: 22px; }
+      .paper-arrow { grid-row: 2; }
+      #paper-next { justify-self: end; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
+      body, article, .paper-detail, .paper-arrow, .paper-empty {
+        transition: none;
+      }
     }
   </style>
 </head>
@@ -531,12 +583,8 @@
       <div class="papers-heading">
         <h2 id="papers-heading">Robotics Papers</h2>
         <div class="paper-controls">
-          <button type="button" id="paper-prev"
-                  aria-label="Previous paper" disabled>←</button>
           <button type="button" id="paper-pause"
                   aria-pressed="false">Pause</button>
-          <button type="button" id="paper-next"
-                  aria-label="Next paper" disabled>→</button>
           <button type="button" id="paper-refresh">Refresh</button>
         </div>
       </div>
@@ -544,19 +592,22 @@
       <p class="paper-intro">
         Robotics, embodied intelligence and robot manipulation.
         Papers from the last 180 days, ranked by community upvotes
-        within the retrieved results. Rotates every 8 seconds;
-        hover or focus to pause.
+        within the retrieved results. Use the arrows, left/right keys,
+        or swipe to explore. Rotates every 8 seconds; hover or focus to pause.
       </p>
 
       <div class="paper-empty" id="paper-empty">
         Searching for recent robotics papers…
       </div>
 
-      <div class="paper-layout" id="paper-layout" hidden>
-        <div class="paper-menu" id="paper-menu"
-             role="group" aria-label="Select a paper"></div>
+      <div class="paper-layout" id="paper-layout" tabindex="0"
+           role="region" aria-roledescription="carousel"
+           aria-label="Recent robotics papers" hidden>
+        <button class="paper-arrow" type="button" id="paper-prev"
+                aria-label="Previous paper" aria-controls="paper-slide" disabled>←</button>
 
-        <div class="paper-detail">
+        <div class="paper-detail" id="paper-slide" role="group"
+             aria-roledescription="slide">
           <div class="paper-meta" id="paper-meta"></div>
           <div class="paper-content" id="paper-content">
             <div class="paper-copy">
@@ -575,7 +626,12 @@
             <figure class="paper-figure" id="paper-figure" hidden></figure>
           </div>
         </div>
+        <button class="paper-arrow" type="button" id="paper-next"
+                aria-label="Next paper" aria-controls="paper-slide" disabled>→</button>
       </div>
+
+      <div class="paper-pagination" id="paper-pagination"
+           role="group" aria-label="Choose a paper" hidden></div>
 
       <div class="paper-bottom">
         <p class="paper-status" id="paper-status" role="status">
@@ -625,7 +681,7 @@
       const $ = id => document.getElementById(id);
 
       const root = $("robot-papers");
-      const menu = $("paper-menu");
+      const pagination = $("paper-pagination");
       const status = $("paper-status");
       const empty = $("paper-empty");
 
@@ -634,6 +690,7 @@
       let loading = false;
       let hovering = false;
       let timer = null;
+      let swipeStart = null;
 
       let paused = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
@@ -747,9 +804,11 @@
         selected = (index + papers.length) % papers.length;
         const p = papers[selected];
 
-        Array.from(menu.children).forEach((button, i) => {
+        Array.from(pagination.children).forEach((button, i) => {
           button.setAttribute("aria-current", String(i === selected));
         });
+        $("paper-slide").setAttribute("aria-label",
+          (selected + 1) + " of " + papers.length + ": " + p.title);
 
         $("paper-meta").textContent =
           new Date(p.publishedAt).toLocaleDateString("en-GB", {
@@ -791,23 +850,23 @@
 
       function render(items) {
         papers = items;
-        menu.replaceChildren();
+        pagination.replaceChildren();
 
         papers.forEach((p, i) => {
           const button = document.createElement("button");
           button.type = "button";
-          button.textContent =
-            String(i + 1).padStart(2, "0") + "  " + p.title;
+          button.setAttribute("aria-label", "Go to paper " + (i + 1) + ": " + p.title);
 
           button.addEventListener("click", () => {
             show(i);
             resetTimer();
           });
 
-          menu.appendChild(button);
+          pagination.appendChild(button);
         });
 
         $("paper-layout").hidden = papers.length === 0;
+        pagination.hidden = papers.length < 2;
         empty.hidden = papers.length > 0;
         $("paper-prev").disabled = papers.length < 2;
         $("paper-next").disabled = papers.length < 2;
@@ -1004,6 +1063,36 @@
       });
 
       $("paper-refresh").addEventListener("click", () => load(true));
+
+      $("paper-layout").addEventListener("keydown", event => {
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+            event.target.closest("input, textarea, select, [contenteditable]")) return;
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        show(selected + (event.key === "ArrowRight" ? 1 : -1));
+        resetTimer();
+      });
+
+      $("paper-layout").addEventListener("pointerdown", event => {
+        if (!event.isPrimary || event.pointerType === "mouse" ||
+            event.target.closest("a, button")) return;
+        swipeStart = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      });
+
+      $("paper-layout").addEventListener("pointerup", event => {
+        const start = swipeStart;
+        swipeStart = null;
+        if (!start || start.id !== event.pointerId) return;
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+        if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+        show(selected + (dx < 0 ? 1 : -1));
+        resetTimer();
+      });
+
+      $("paper-layout").addEventListener("pointercancel", () => {
+        swipeStart = null;
+      });
 
       root.addEventListener("mouseenter", () => {
         hovering = true;
