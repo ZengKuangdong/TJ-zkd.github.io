@@ -279,6 +279,42 @@
       min-width: 0;
     }
 
+    .paper-content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .paper-content.has-image {
+      grid-template-columns: minmax(0, 1fr) minmax(160px, 38%);
+    }
+
+    .paper-copy { min-width: 0; }
+
+    .paper-figure { margin: 14px 0 0; }
+
+    .paper-figure a {
+      display: block;
+      aspect-ratio: 4 / 3;
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+
+    .paper-figure img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .paper-figure figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
     .paper-meta {
       color: var(--gold);
       font-size: 12px;
@@ -353,6 +389,17 @@
       border-top: 1px solid var(--line);
       color: var(--muted);
       font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .paper-content.has-image { grid-template-columns: minmax(0, 1fr); }
+
+      .paper-figure {
+        grid-row: 1;
+        margin: 14px 0 0;
+        width: 100%;
+        max-width: 360px;
+      }
     }
 
     @media (max-width: 720px) {
@@ -511,16 +558,21 @@
 
         <div class="paper-detail">
           <div class="paper-meta" id="paper-meta"></div>
-          <h3 class="paper-title" id="paper-title"></h3>
-          <p class="paper-authors" id="paper-authors"></p>
-          <p class="paper-summary" id="paper-summary"
-             tabindex="0" aria-label="Paper abstract"></p>
+          <div class="paper-content" id="paper-content">
+            <div class="paper-copy">
+              <h3 class="paper-title" id="paper-title"></h3>
+              <p class="paper-authors" id="paper-authors"></p>
+              <p class="paper-summary" id="paper-summary"
+                 tabindex="0" aria-label="Paper abstract"></p>
 
-          <div class="paper-links">
-            <a id="paper-arxiv" target="_blank"
-               rel="noopener noreferrer">Read on arXiv ↗</a>
-            <a id="paper-community" target="_blank"
-               rel="noopener noreferrer">Community discussion ↗</a>
+              <div class="paper-links">
+                <a id="paper-arxiv" target="_blank"
+                   rel="noopener noreferrer">Read on arXiv ↗</a>
+                <a id="paper-community" target="_blank"
+                   rel="noopener noreferrer">Community discussion ↗</a>
+              </div>
+            </div>
+            <figure class="paper-figure" id="paper-figure" hidden></figure>
           </div>
         </div>
       </div>
@@ -569,7 +621,7 @@
         requestTimeoutMs: 15000
       };
 
-      const CACHE_KEY = "robotics-paper-radar-v2";
+      const CACHE_KEY = "robotics-paper-radar-v3";
       const $ = id => document.getElementById(id);
 
       const root = $("robot-papers");
@@ -586,6 +638,21 @@
       let paused = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
       ).matches;
+
+      function normalizeImageUrl(value) {
+        if (typeof value !== "string" || !value.trim()) return "";
+
+        try {
+          const url = new URL(value);
+          const trustedHost = url.hostname === "huggingface.co" ||
+            url.hostname.endsWith(".huggingface.co");
+
+          return url.protocol === "https:" && trustedHost &&
+            !url.username && !url.password ? url.href : "";
+        } catch (_) {
+          return "";
+        }
+      }
 
       function normalize(entry) {
         if (!entry || typeof entry !== "object") return null;
@@ -623,10 +690,55 @@
           id,
           title: p.title.trim(),
           summary,
+          thumbnail: [entry.thumbnail, p.thumbnail,
+            p.thumbnailUrl, entry.thumbnailUrl]
+            .map(normalizeImageUrl).find(Boolean) || "",
           publishedAt: new Date(time).toISOString(),
           upvotes: Number.isFinite(votes) ? Math.max(0, votes) : 0,
           authors: authors.map(name => ({ name }))
         };
+      }
+
+      function showImage(paper) {
+        const figure = $("paper-figure");
+        const content = $("paper-content");
+        figure.hidden = true;
+        content.classList.remove("has-image");
+        figure.replaceChildren();
+
+        if (!paper.thumbnail) return;
+
+        const image = document.createElement("img");
+        image.alt = "Paper preview: " + paper.title;
+        image.decoding = "async";
+        image.referrerPolicy = "no-referrer";
+
+        const link = document.createElement("a");
+        link.href = paper.thumbnail;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", "View full-size preview: " + paper.title);
+        link.appendChild(image);
+
+        const caption = document.createElement("figcaption");
+        caption.textContent = "Paper preview · Hugging Face · Click to enlarge";
+
+        image.addEventListener("load", () => {
+          // A previous paper's image may finish after the reader switches papers.
+          if (!figure.contains(image)) return;
+          figure.hidden = false;
+          content.classList.add("has-image");
+        }, { once: true });
+
+        image.addEventListener("error", () => {
+          if (!figure.contains(image)) return;
+          figure.hidden = true;
+          content.classList.remove("has-image");
+          figure.replaceChildren();
+        }, { once: true });
+
+        figure.append(link, caption);
+        image.src = paper.thumbnail;
       }
 
       function show(index) {
@@ -655,6 +767,7 @@
         $("paper-summary").textContent =
           p.summary || "Abstract unavailable.";
         $("paper-summary").scrollTop = 0;
+        showImage(p);
 
         $("paper-arxiv").href = "https://arxiv.org/abs/" + p.id;
         $("paper-community").href = "https://huggingface.co/papers/" + p.id;
